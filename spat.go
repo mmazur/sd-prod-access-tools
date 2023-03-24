@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -84,7 +85,7 @@ func getLatestGitLabRelease(url string) (string, []string, error) {
 	return version, assets, nil
 }
 
-func cmdCheck() {
+func cmdCheck(cmd *cobra.Command, args []string) {
 	fmt.Println("Latest versions:")
 
 	url := "https://gitlab.cee.redhat.com/api/v4/projects/33674/releases"
@@ -111,6 +112,43 @@ func cmdCheck() {
 	}
 }
 
+func createDirectories() error {
+	// TODO: this is probably too linux-specific
+	//       and needs error reporting
+	fmt.Print("Creating directory structure…\t\t")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	dirs := []string{
+		filepath.Join(homeDir, ".spat"),
+		filepath.Join(homeDir, ".spat", "bin"),
+		filepath.Join(homeDir, ".spat", "tmp"),
+	}
+
+	for _, dir := range dirs {
+		err := os.Mkdir(dir, 0700)
+		if err != nil && !os.IsExist(err) {
+			fmt.Println("FAILED")
+			return err
+		}
+	}
+
+	fmt.Println("DONE (in `$HOME/.spat`)")
+
+	return nil
+}
+
+func cmdInit(cmd *cobra.Command, args []string) {
+	_ = createDirectories()
+	fmt.Println("Installing tools…\t\t\tFAIL (not implemented yet)")
+}
+
+func cmdUpgrade(cmd *cobra.Command, args []string) {
+	fmt.Println("Upgrading tools…\t\t\tFAIL (not implemented yet)")
+}
+
 func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "spat",
@@ -118,15 +156,27 @@ func main() {
 		Long:  "SD Prod Access Tools Manager",
 	}
 
-	var checkCmd = &cobra.Command{
-		Use:   "check",
-		Short: "Check and report upstream versions of all managed tools",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdCheck()
-		},
+	var initCmd = &cobra.Command{
+		Use:   "init",
+		Short: "Initialize spat and install prod access tools",
+		Run:   cmdInit,
 	}
 
+	var checkCmd = &cobra.Command{
+		Use:   "check",
+		Short: "Check local and upstream versions of all managed tools",
+		Run:   cmdCheck,
+	}
+
+	var upgradeCmd = &cobra.Command{
+		Use:   "upgrade",
+		Short: "Upgraded (chosen) managed tools to their latest versions",
+		Run:   cmdUpgrade,
+	}
+
+	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(checkCmd)
+	rootCmd.AddCommand(upgradeCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
