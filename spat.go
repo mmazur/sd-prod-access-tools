@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/spf13/cobra"
 )
@@ -140,9 +142,82 @@ func createDirectories() error {
 	return nil
 }
 
+func findAsset(assets []string, rematch string) string {
+	r := regexp.MustCompile(rematch)
+	for _, asset := range assets {
+		if r.MatchString(asset) {
+			return asset
+		}
+	}
+	return ""
+}
+
+func downloadAsset(url string, path string) string {
+	tmpfile := filepath.Join(path, "tmpfile") // TODO: just no
+
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println("Error downloading file:", err)
+		return ""
+	}
+	defer resp.Body.Close()
+
+	out, err := os.Create(tmpfile)
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return ""
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		fmt.Println("Error copying file:", err)
+		return ""
+	}
+
+	return tmpfile
+}
+
+func installTool(tooltype string, toolid string, assetmatch string, binaryname string) {
+	if tooltype != "github" {
+		fmt.Printf("Installing tools of type %s isn't supported", tooltype)
+		return
+	}
+
+	version, assets, err := getLatestGitHubRelease(toolid)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	asset := findAsset(assets, assetmatch)
+	if asset == "" {
+		fmt.Println("Couldn't find asset to download")
+		return
+	}
+
+	homeDir, _ := os.UserHomeDir()
+	bindir := filepath.Join(homeDir, ".spat", "bin")
+	binfile := filepath.Join(bindir, binaryname)
+	tmpdir := filepath.Join(homeDir, ".spat", "tmp")
+
+	// TODO: support unzipping first
+
+	tmpfile := downloadAsset(asset, tmpdir)
+	err = os.Rename(tmpfile, binfile)
+	if err != nil {
+		fmt.Println("Error moving file:", err)
+		return
+	}
+	os.Chmod(binfile, os.FileMode(0755))
+
+	fmt.Printf("Installed %s %s as binary '%s'\n", toolid, version, binaryname)
+
+}
+
 func cmdInit(cmd *cobra.Command, args []string) {
 	_ = createDirectories()
-	fmt.Println("Installing tools…\t\t\tFAIL (not implemented yet)")
+	installTool("github", "openshift-online/ocm-cli", "/ocm-linux-amd64$", "ocm")
 }
 
 func cmdUpgrade(cmd *cobra.Command, args []string) {
