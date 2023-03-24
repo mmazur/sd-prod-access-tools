@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+
+	"github.com/spf13/cobra"
 )
 
 type GHRelease struct {
@@ -80,7 +83,8 @@ func getLatestGitLabRelease(url string) (string, []string, error) {
 
 	return version, assets, nil
 }
-func main() {
+
+func cmdCheck() {
 	fmt.Println("Latest versions:")
 
 	url := "https://gitlab.cee.redhat.com/api/v4/projects/33674/releases"
@@ -104,5 +108,28 @@ func main() {
 				for _, asset := range assets {
 					fmt.Println("-", asset)
 				}*/
+	}
+}
+
+func main() {
+	var rootCmd = &cobra.Command{
+		Use:   "spat",
+		Short: "SD Prod Access Tools Manager",
+		Long:  "SD Prod Access Tools Manager",
+	}
+
+	var checkCmd = &cobra.Command{
+		Use:   "check",
+		Short: "Check and report upstream versions of all managed tools",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdCheck()
+		},
+	}
+
+	rootCmd.AddCommand(checkCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }

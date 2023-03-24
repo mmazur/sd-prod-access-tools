@@ -1,7 +1,9 @@
 # sd-prod-access-tools
-SD Production Access Tools (Manager)
+SD Production Access Tools Manager
 
+## Usage
 
 ```
-go run spat.go
+# Check all upstream tool versions
+go run spat.go check
 ```
